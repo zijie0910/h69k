@@ -1,0 +1,37 @@
+name: OpenWrt H69K Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+          gettext libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev
+
+    - name: Clone OpenWrt
+      run: |
+        git clone https://github.com/openwrt/openwrt.git
+        cp -rf .config files openwrt/
+        cd openwrt
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+        make defconfig
+        make download -j$(nproc) || true
+        make -j$(nproc)
+
+    - name: Upload firmware
+      uses: actions/upload-artifact@v3
+      with:
+        name: h69k-openwrt-firmware
+        path: openwrt/bin/targets/rockchip/armv8/*img.gz
